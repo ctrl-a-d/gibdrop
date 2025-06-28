@@ -139,64 +139,61 @@ class Patcher:
 
     def patch_run_py(self):
         runpy_path = "run.py"
+        backup_path = "run.py.bak"
         if not os.path.exists(runpy_path):
             print("run.py not found!")
             return
+        # Backup original if not already backed up
+        if not os.path.exists(backup_path):
+            shutil.copy(runpy_path, backup_path)
+            print("Backed up run.py to run.py.bak.")
         with open(runpy_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        required_lines = [
+            content = f.read()
+        # Check if already patched (idempotency)
+        if re.search(r"twitch_miner\.mine\s*\(\s*streamer_objects", content):
+            print("run.py already patched. No changes made.")
+            return
+        # Regex to match the entire twitch_miner.mine([...]) call, including multiline and comments
+        mine_pattern = re.compile(
+            r"twitch_miner\.mine\s*\(\s*\[.*?\][^)]*\)",
+            re.DOTALL
+        )
+        # Replacement: use streamer_objects and add a comment
+        replacement = (
+            "twitch_miner.mine(\n"
+            "    streamer_objects,                   # [gibdrop] patched: dynamic streamer list\n"
+            "    followers=False,                    # Automatic download the list of your followers\n"
+            "    followers_order=FollowersOrder.ASC  # Sort the followers list by follow date. ASC or DESC\n"
+            ")"
+        )
+        new_content, count = mine_pattern.subn(replacement, content)
+        if count == 0:
+            print("No hardcoded streamer list found in twitch_miner.mine(). No changes made to mine() call.")
+            return
+        # Insert import and streamer loading if not present
+        import_lines = [
             "from bs4 import BeautifulSoup\n",
             "import get_streamer\n",
             "streamer_names = get_streamer.load_active_streamers()\n",
             "streamer_objects = [Streamer(name) for name in streamer_names]\n"
         ]
-        already_present = any("import get_streamer" in line for line in lines)
-        if not already_present:
-            insert_idx = None
-            for i, line in enumerate(lines):
-                if "from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings" in line:
-                    insert_idx = i + 1
-                    break
-            if insert_idx is not None:
-                for offset, req_line in enumerate(required_lines):
-                    lines.insert(insert_idx + offset, req_line)
+        if "import get_streamer" not in new_content:
+            # Insert after Streamer import
+            streamer_import = "from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings"
+            idx = new_content.find(streamer_import)
+            if idx != -1:
+                insert_idx = new_content.find("\n", idx) + 1
+                new_content = (
+                    new_content[:insert_idx] +
+                    "".join(import_lines) +
+                    new_content[insert_idx:]
+                )
                 print("Inserted streamer import and loading lines.")
-        pattern = re.compile(r"twitch_miner\.mine\s*\(\s*\[", re.DOTALL)
-        start_idx = None
-        for i, line in enumerate(lines):
-            if pattern.search(line):
-                start_idx = i
-                break
-        if start_idx is not None:
-            end_idx = start_idx
-            bracket_count = 0
-            found_open = False
-            for j in range(start_idx, len(lines)):
-                if '[' in lines[j]:
-                    bracket_count += lines[j].count('[')
-                    found_open = True
-                if ']' in lines[j]:
-                    bracket_count -= lines[j].count(']')
-                if found_open and bracket_count == 0:
-                    for k in range(j, len(lines)):
-                        if ')' in lines[k]:
-                            end_idx = k
-                            break
-                    break
-            new_call = [
-                "twitch_miner.mine(\n",
-                "    streamer_objects,                   # Array of streamers (order = priority)\n",
-                "    followers=False,                    # Automatic download the list of your followers\n",
-                "    followers_order=FollowersOrder.ASC  # Sort the followers list by follow date. ASC or DESC\n",
-                ")\n"
-            ]
-            lines[start_idx:end_idx+1] = new_call
-            print("Patched twitch_miner.mine() call to use streamer_objects.")
-        else:
-            print("No hardcoded streamer list found in twitch_miner.mine(). No changes made to mine() call.")
+            else:
+                print("Could not find Streamer import to insert get_streamer logic. Please check run.py.")
         with open(runpy_path, "w", encoding="utf-8") as f:
-            f.writelines(lines)
-        print("run.py patched successfully!")
+            f.write(new_content)
+        print("run.py patched successfully! If anything went wrong, restore from run.py.bak.")
 
 class GibdropMenu:
     def __init__(self, streamer_manager, patcher):
