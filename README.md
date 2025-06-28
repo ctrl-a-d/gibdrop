@@ -34,7 +34,7 @@ A helper utility for automating and patching the [Twitch-Channel-Points-Miner-v2
    - On first run, the script will try to install dependencies system-wide. If that fails (e.g. on managed Linux distros), it will create a local virtual environment (`.gibdrop_venv`), install dependencies there, and restart itself automatically.
    - You do NOT need to manually activate the virtual environment.
 4. Use the menu to:
-   - Patch `run.py`: This will import the necessary modules and add logic so the miner reads the streamer list from your managed files (`default_streamers.txt`, `drop_streamers.txt`, and `active_streamers.txt`) instead of a hardcoded list).
+   - Patch `run.py`: This will import the necessary modules and add logic so the miner reads the streamer list from your managed files (`default_streamers.txt`, `drop_streamers.txt`, and `active_streamers.txt`) instead of a hardcoded list.
    - Manage streamer lists
    - Start the Twitch miner
 
