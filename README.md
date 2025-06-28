@@ -23,7 +23,7 @@ A helper utility for automating and patching the [Twitch-Channel-Points-Miner-v2
 - Ensures all dependencies (`requests`, `beautifulsoup4`) are installed (if needed)
 
 ## Usage
-1. **Clone the main miner project** ([Twitch-Channel-Points-Miner-v2](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2)) and place `gibdrop_allinone.py` in the same directory.
+1. **Clone the main miner project** ([Twitch-Channel-Points-Miner-v2](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2)) and place `gibdrop.py` in the same directory.
 2. **Just run:**
    ```bash
    python3 gibdrop_allinone.py
