@@ -18,22 +18,25 @@ A helper utility for automating and patching the [Twitch-Channel-Points-Miner-v2
   - Patching `run.py` only
   - Managing default and drop streamer lists
   - Switching active streamer lists
-  - Starting the Twitch miner (choose Docker or CLI)
+  - Starting the Twitch miner
 - Automatic patching of `run.py` (or creation from `example.py` or GitHub if missing)
 - Ensures all dependencies (`requests`, `beautifulsoup4`) are installed (if needed)
 
 ## Usage
 1. **Clone the main miner project** ([Twitch-Channel-Points-Miner-v2](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2)) and place `gibdrop.py` in the same directory.
-2. **Just run:**
+2. **Before using gibdrop, make sure the miner itself works!**
+   - Test that you can run the miner and it starts up without errors.
+   - Only proceed if the miner is working as expected.
+3. **Just run:**
    ```bash
-   python3 gibdrop.py
+   python3 gibdrop_allinone.py
    ```
    - On first run, the script will try to install dependencies system-wide. If that fails (e.g. on managed Linux distros), it will create a local virtual environment (`.gibdrop_venv`), install dependencies there, and restart itself automatically.
    - You do NOT need to manually activate the virtual environment.
-3. Use the menu to:
-   - Patch `run.py` (option 1)
-   - Manage streamer lists (options 2-5)
-   - Start the Twitch miner (option 6, choose Docker or CLI)
+4. Use the menu to:
+   - Patch `run.py`
+   - Manage streamer lists
+   - Start the Twitch miner
 
 ## Requirements
 - Python 3.7+
