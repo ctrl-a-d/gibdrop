@@ -29,7 +29,7 @@ A helper utility for automating and patching the [Twitch-Channel-Points-Miner-v2
    - Only proceed if the miner is working as expected.
 3. **Just run:**
    ```bash
-   python3 gibdrop_allinone.py
+   python3 gibdrop.py
    ```
    - On first run, the script will try to install dependencies system-wide. If that fails (e.g. on managed Linux distros), it will create a local virtual environment (`.gibdrop_venv`), install dependencies there, and restart itself automatically.
    - You do NOT need to manually activate the virtual environment.
