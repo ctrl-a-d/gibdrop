@@ -5,7 +5,10 @@ import os
 import sys
 
 DOCKERFILE = "Dockerfile.patched"
+# Use a single, consistent image name everywhere
 IMAGE_NAME = "gibdrop-miner-patched"
+IMAGE_TAG = "latest"
+FULL_IMAGE = f"{IMAGE_NAME}:{IMAGE_TAG}"
 
 # Files to mount (edit as needed)
 MOUNT_FILES = [
@@ -22,9 +25,9 @@ TXT_FILES = [
 ]
 
 def build_image():
-    print(f"Building Docker image '{IMAGE_NAME}' from {DOCKERFILE}...")
+    print(f"Building Docker image '{FULL_IMAGE}' from {DOCKERFILE}...")
     result = subprocess.run([
-        "docker", "build", "-f", DOCKERFILE, "-t", IMAGE_NAME, "."
+        "docker", "build", "-f", DOCKERFILE, "-t", FULL_IMAGE, "."
     ])
     if result.returncode != 0:
         print("Docker build failed!")
@@ -32,15 +35,31 @@ def build_image():
     print("Docker image built successfully.")
 
 def run_container():
-    print("Starting patched miner container with mounted files...")
-    mounts = []
-    for fname in MOUNT_FILES:
-        if os.path.exists(fname):
-            mounts.extend(["-v", f"{os.path.abspath(fname)}:/usr/src/app/{fname}"])
-        else:
-            print(f"Warning: {fname} not found, will not be mounted.")
-    cmd = ["docker", "run", "-it", "--rm"] + mounts + [IMAGE_NAME]
-    print("Running:", " ".join(cmd))
+    import subprocess
+    import os
+    # Ensure persistent volumes for cookies, logs, analytics, and mount run.py as read-only
+    def abs_path_clean(path):
+        return os.path.abspath(path).strip()
+    # Ensure all .txt files exist before running Docker
+    for fname in TXT_FILES:
+        if not os.path.exists(fname):
+            print(f"[Docker] Creating missing file: {fname}")
+            with open(fname, "w", encoding="utf-8") as f:
+                f.write("")
+    volumes = [
+        f"-v{abs_path_clean('cookies')}:/usr/src/app/cookies",
+        f"-v{abs_path_clean('logs')}:/usr/src/app/logs",
+        f"-v{abs_path_clean('analytics')}:/usr/src/app/analytics",
+        f"-v{abs_path_clean('run.py')}:/usr/src/app/run.py:ro"
+    ]
+    # Mount all .txt streamer files as well
+    for fname in TXT_FILES:
+        volumes.append(f"-v{abs_path_clean(fname)}:/usr/src/app/{fname}")
+    ports = ["-p", "5000:5000"]
+    image = FULL_IMAGE
+    cmd = ["docker", "run", "-it", "--rm"] + volumes + ports + [image]
+    print("\n[Docker] Running container with persistent cookies/logs/analytics, run.py, and .txt streamer files mounted...")
+    print("[Docker] Command:", " ".join(cmd))
     subprocess.run(cmd)
 
 def ensure_txt_files():
@@ -51,30 +70,39 @@ def ensure_txt_files():
                 f.write("")
 
 def needs_rebuild():
-    # Check if image exists
-    result = subprocess.run(["docker", "images", "-q", IMAGE_NAME], capture_output=True, text=True)
-    image_exists = bool(result.stdout.strip())
-    if not image_exists:
+    # Check if image exists using docker image inspect
+    result = subprocess.run([
+        "docker", "image", "inspect", FULL_IMAGE
+    ], capture_output=True, text=True)
+    if result.returncode != 0:
         return True
     # Check if Dockerfile or requirements.txt changed since last build
     try:
+        import datetime
+        try:
+            from dateutil import parser as dtparser
+        except ImportError:
+            print("[DEBUG] dateutil not found, falling back to datetime.fromisoformat (Python 3.7+ required)")
+            dtparser = None
         dockerfile_mtime = os.path.getmtime(DOCKERFILE)
         reqfile = "requirements.txt"
         req_mtime = os.path.getmtime(reqfile) if os.path.exists(reqfile) else 0
         # Get image creation time
         inspect = subprocess.run([
-            "docker", "image", "inspect", IMAGE_NAME, "-f", "{{.Created}}"
+            "docker", "image", "inspect", FULL_IMAGE, "-f", "{{.Created}}"
         ], capture_output=True, text=True)
-        import datetime
-        from dateutil import parser as dtparser
-        image_time = dtparser.parse(inspect.stdout.strip()) if inspect.returncode == 0 and inspect.stdout.strip() else None
+        if dtparser:
+            image_time = dtparser.parse(inspect.stdout.strip()) if inspect.returncode == 0 and inspect.stdout.strip() else None
+        else:
+            image_time = datetime.datetime.fromisoformat(inspect.stdout.strip().replace('Z', '+00:00')) if inspect.returncode == 0 and inspect.stdout.strip() else None
         file_time = max(dockerfile_mtime, req_mtime)
         if image_time is None:
             return True
-        # Compare file mtime to image creation time
-        if datetime.datetime.fromtimestamp(file_time) > image_time:
+        file_datetime = datetime.datetime.fromtimestamp(file_time, tz=image_time.tzinfo)
+        if file_datetime > image_time:
             return True
-    except Exception:
+    except Exception as e:
+        print(f"[DEBUG] Time comparison failed: {e}")
         return True
     return False
 
