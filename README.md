@@ -10,6 +10,12 @@
 
 A helper utility for automating and patching the [Twitch-Channel-Points-Miner-v2](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2) streamer list.
 
+## Purpose
+
+The main intent of this script is to make farming Twitch drops for [Rust](https://store.steampowered.com/app/252490/Rust/) as easy as possible. It automatically fetches all available Rust drop streamers from the official [website](https://twitch.facepunch.com/), saves their usernames to a file, and allows you to load them and start the miner with minimal effort.
+
+After you have collected all the Rust drops, you can easily switch back to your default streamers list and continue farming channel points or other drops as usual.
+
 ## Features
 - Automatically manages Python dependencies and environment:
   - Tries to install dependencies system-wide
