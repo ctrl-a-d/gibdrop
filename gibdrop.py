@@ -6,7 +6,7 @@ import shutil
 import urllib.request
 import gibdrop_dockermgr
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 # --- Bootstrap: install dependencies if missing ---
 REQUIRED_PACKAGES = ["requests", "beautifulsoup4"]
@@ -17,6 +17,36 @@ def in_venv():
         hasattr(sys, "real_prefix") or
         (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix)
     )
+
+def ensure_venv_available():
+    try:
+        import venv
+        return True
+    except ImportError:
+        print("Python 'venv' module is not installed. Attempting to install it...")
+        # Try to detect the OS and install venv
+        if shutil.which('apt-get'):
+            cmd = ['sudo', 'apt-get', 'update']
+            try:
+                subprocess.check_call(cmd)
+            except Exception:
+                pass
+            cmd = ['sudo', 'apt-get', 'install', '-y', 'python3-venv']
+        elif shutil.which('apk'):
+            cmd = ['sudo', 'apk', 'add', 'py3-virtualenv']
+        elif shutil.which('yum'):
+            cmd = ['sudo', 'yum', 'install', '-y', 'python3-venv']
+        else:
+            print("Could not detect package manager. Please install python3-venv manually.")
+            return False
+        try:
+            subprocess.check_call(cmd)
+            import venv
+            print("'venv' module installed successfully.")
+            return True
+        except Exception as e:
+            print(f"Failed to install 'venv': {e}\nPlease install python3-venv manually using your system's package manager.")
+            return False
 
 try:
     import requests
@@ -49,36 +79,6 @@ except ImportError:
         else:
             print("Failed to install dependencies, even in a virtual environment. Exiting.")
             sys.exit(1)
-
-def ensure_venv_available():
-    try:
-        import venv
-        return True
-    except ImportError:
-        print("Python 'venv' module is not installed. Attempting to install it...")
-        # Try to detect the OS and install venv
-        if shutil.which('apt-get'):
-            cmd = ['sudo', 'apt-get', 'update']
-            try:
-                subprocess.check_call(cmd)
-            except Exception:
-                pass
-            cmd = ['sudo', 'apt-get', 'install', '-y', 'python3-venv']
-        elif shutil.which('apk'):
-            cmd = ['sudo', 'apk', 'add', 'py3-virtualenv']
-        elif shutil.which('yum'):
-            cmd = ['sudo', 'yum', 'install', '-y', 'python3-venv']
-        else:
-            print("Could not detect package manager. Please install python3-venv manually.")
-            return False
-        try:
-            subprocess.check_call(cmd)
-            import venv
-            print("'venv' module installed successfully.")
-            return True
-        except Exception as e:
-            print(f"Failed to install 'venv': {e}\nPlease install python3-venv manually using your system's package manager.")
-            return False
 
 class StreamerManager:
     def get_rust_drops(self):

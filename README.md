@@ -4,7 +4,7 @@
 
 # gibdrop
 
-**Version: 0.0.2**
+**Version: 0.0.3**
 
 > **This project is vibecoded. Which means it might work or not work.**
 
