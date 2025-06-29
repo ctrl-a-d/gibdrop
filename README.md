@@ -21,6 +21,8 @@ A helper utility for automating and patching the [Twitch-Channel-Points-Miner-v2
   - Starting the Twitch miner
 - Automatic patching of `run.py` (or creation from `example.py` or GitHub if missing)
 - Ensures all dependencies (`requests`, `beautifulsoup4`) are installed (if needed)
+- **Docker workflow**: Build and run a patched Docker image directly from the gibdrop menu. The script ensures all required files and a suitable Dockerfile are present, and only rebuilds the image if needed.
+- All Docker actions are fully automated from the gibdrop menu.
 
 ## Usage
 1. **Clone the main miner project** ([Twitch-Channel-Points-Miner-v2](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2)) and place `gibdrop.py` in the same directory.
@@ -33,17 +35,22 @@ A helper utility for automating and patching the [Twitch-Channel-Points-Miner-v2
    ```
    - On first run, the script will try to install dependencies system-wide. If that fails (e.g. on managed Linux distros), it will create a local virtual environment (`.gibdrop_venv`), install dependencies there, and restart itself automatically.
    - You do NOT need to manually activate the virtual environment.
-4. Use the menu to:
+4. **Use the menu to:**
    - Patch `run.py`: This will import the necessary modules and add logic so the miner reads the streamer list from your managed files (`default_streamers.txt`, `drop_streamers.txt`, and `active_streamers.txt`) instead of a hardcoded list.
    - Manage streamer lists
    - Start the Twitch miner
-
-## Requirements
-- Python 3.7+
-- The main miner project files (see above)
+   - **To use Docker:** Simply select the Docker option in the gibdrop menu when you are ready to run the miner. The script will:
+     - Ensure all required `.txt` files and the patched Dockerfile exist (creating them if missing)
+     - Check if the Docker image needs to be rebuilt (only if the Dockerfile or dependencies changed)
+     - Build the image and run the container with your local files mounted in
+     - You never need to run any Docker commands or helper scripts manually
 
 ## Notes
 - The script will automatically create the three .txt files it uses (`default_streamers.txt`, `drop_streamers.txt`, and `active_streamers.txt`) if they do not exist.
 - `.gibdrop_venv` is created automatically if needed and can be safely deleted if you want to reset the environment.
 - The drop streamer patcher is only for Rust Twitch drops.
 - For full miner functionality, see the [main project](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2).
+- The Dockerfile (`Dockerfile.patched`) is created automatically if missing, and always uses the correct base image and dependencies for patched/miner workflows.
+- All Docker build/run logic is handled by gibdrop.
+- The `gibdrop_dockermgr.py` file is only needed if you use the Docker workflow (it is called automatically by gibdrop; you never need to run it yourself).
+- **The Docker workflow only works on Linux. It will not work on Windows.**

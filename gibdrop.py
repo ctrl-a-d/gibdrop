@@ -4,6 +4,7 @@ import subprocess
 import re
 import shutil
 import urllib.request
+import gibdrop_dockermgr
 
 __version__ = "0.0.2"
 
@@ -31,6 +32,9 @@ except ImportError:
         if not in_venv():
             # Create venv if it doesn't exist
             if not os.path.isdir(VENV_DIR):
+                if not ensure_venv_available():
+                    print("Cannot continue without Python venv support. Exiting.")
+                    sys.exit(1)
                 print("Creating virtual environment for gibdrop...")
                 subprocess.check_call([sys.executable, "-m", "venv", VENV_DIR])
             # Install dependencies in the venv
@@ -45,6 +49,36 @@ except ImportError:
         else:
             print("Failed to install dependencies, even in a virtual environment. Exiting.")
             sys.exit(1)
+
+def ensure_venv_available():
+    try:
+        import venv
+        return True
+    except ImportError:
+        print("Python 'venv' module is not installed. Attempting to install it...")
+        # Try to detect the OS and install venv
+        if shutil.which('apt-get'):
+            cmd = ['sudo', 'apt-get', 'update']
+            try:
+                subprocess.check_call(cmd)
+            except Exception:
+                pass
+            cmd = ['sudo', 'apt-get', 'install', '-y', 'python3-venv']
+        elif shutil.which('apk'):
+            cmd = ['sudo', 'apk', 'add', 'py3-virtualenv']
+        elif shutil.which('yum'):
+            cmd = ['sudo', 'yum', 'install', '-y', 'python3-venv']
+        else:
+            print("Could not detect package manager. Please install python3-venv manually.")
+            return False
+        try:
+            subprocess.check_call(cmd)
+            import venv
+            print("'venv' module installed successfully.")
+            return True
+        except Exception as e:
+            print(f"Failed to install 'venv': {e}\nPlease install python3-venv manually using your system's package manager.")
+            return False
 
 class StreamerManager:
     def get_rust_drops(self):
@@ -149,16 +183,7 @@ class Patcher:
             print("Backed up run.py to run.py.bak.")
         with open(runpy_path, "r", encoding="utf-8") as f:
             content = f.read()
-        # Check if already patched (idempotency)
-        if re.search(r"twitch_miner\.mine\s*\(\s*streamer_objects", content):
-            print("run.py already patched. No changes made.")
-            return
-        # Regex to match the entire twitch_miner.mine([...]) call, including multiline and comments
-        mine_pattern = re.compile(
-            r"twitch_miner\.mine\s*\(\s*\[.*?\][^)]*\)",
-            re.DOTALL
-        )
-        # Replacement: use streamer_objects and add a comment
+        # The correct patched block
         replacement = (
             "twitch_miner.mine(\n"
             "    streamer_objects,                   # [gibdrop] patched: dynamic streamer list\n"
@@ -166,10 +191,29 @@ class Patcher:
             "    followers_order=FollowersOrder.ASC  # Sort the followers list by follow date. ASC or DESC\n"
             ")"
         )
-        new_content, count = mine_pattern.subn(replacement, content)
+        # If the file already ends with the correct block (plus optional newline), do nothing
+        if content.rstrip().endswith(replacement):
+            print("run.py already patched. No changes made.")
+            return
+        # Regex to match the entire twitch_miner.mine(...) call, including multiline, comments, and all arguments, up to the last closing parenthesis
+        mine_pattern = re.compile(
+            r"twitch_miner\.mine\s*\((?:[^()]*|\([^()]*\))*\)\s*",  # non-recursive, but works for most cases
+            re.DOTALL
+        )
+        # Replace all mine() calls
+        new_content, count = mine_pattern.subn(replacement + "\n", content)
         if count == 0:
             print("No hardcoded streamer list found in twitch_miner.mine(). No changes made to mine() call.")
             return
+        # Remove any lines after the patched block (ensure the last line is the closing parenthesis)
+        new_content = new_content.rstrip()
+        # Find the last occurrence of the patched block
+        last_patch = replacement.rstrip()
+        idx = new_content.rfind(last_patch)
+        if idx != -1:
+            new_content = new_content[:idx + len(last_patch)]
+        # Optionally, add a single newline at the end for POSIX compliance
+        new_content = new_content.rstrip() + "\n"
         # Insert import and streamer loading if not present
         import_lines = [
             "from bs4 import BeautifulSoup\n",
@@ -269,21 +313,21 @@ class GibdropMenu:
         print("0) Cancel")
         choice = input("Enter your choice: ")
         if choice == "1":
-            yml_exists = any(os.path.isfile(f) for f in ["docker-compose.yml", "docker-compose.yaml"])
-            if not yml_exists:
-                print("No docker-compose.yml or docker-compose.yaml file found in the current directory.")
-                self.press_any_key()
-                return
-            try:
-                result = subprocess.run(['docker', 'compose', 'up', '-d'],
-                                        capture_output=True, text=True, check=True)
-                print("Docker compose started successfully.")
-                print(result.stdout)
-            except subprocess.CalledProcessError as e:
-                print("Failed to start docker compose:", e)
-                print(e.stderr)
-            except FileNotFoundError:
-                print("Docker is not installed or not found in PATH.")
+            print("\nYou selected Docker. To support your patched run.py and dependencies, gibdrop will build a new Docker image based on the official miner image.\n")
+            print("This will ensure your patched run.py and all dependencies work inside Docker.\n")
+            # Ensure Dockerfile and .txt files exist
+            gibdrop_dockermgr.ensure_dockerfile()
+            gibdrop_dockermgr.ensure_txt_files()
+            # Check if rebuild is needed
+            if gibdrop_dockermgr.needs_rebuild():
+                print("No patched Docker image found, or you changed the Dockerfile / dependencies recently.\nNeed to rebuild image.")
+                confirm = input("Continue and rebuild image? (y/n): ").strip().lower()
+                if confirm != "y":
+                    print("Cancelled Docker start.")
+                    self.press_any_key()
+                    return
+                gibdrop_dockermgr.build_image()
+            gibdrop_dockermgr.run_container()
             self.press_any_key()
         elif choice == "2":
             if not os.path.isfile("run.py"):
