@@ -82,4 +82,4 @@ def ensure_dockerfile():
     if not os.path.exists(DOCKERFILE):
         print(f"Creating missing Dockerfile: {DOCKERFILE}")
         with open(DOCKERFILE, "w", encoding="utf-8") as f:
-            f.write('''FROM rdavydov/twitch-channel-points-miner-v2:latest\n\nWORKDIR /usr/src/app\n\n# Install extra Python dependencies needed for patched run.py or gibdrop.py\nRUN pip install --no-cache-dir beautifulsoup4 requests\n\n# Entrypoint remains the same as the official image\nENTRYPOINT ["python", "run.py"]\n''')
+            f.write('''FROM rdavidoff/twitch-channel-points-miner-v2:latest\n\nWORKDIR /usr/src/app\n\n# Install extra Python dependencies needed for patched run.py or gibdrop.py\nRUN pip install --no-cache-dir beautifulsoup4 requests\n\n# Entrypoint remains the same as the official image\nENTRYPOINT ["python", "run.py"]\n''')
