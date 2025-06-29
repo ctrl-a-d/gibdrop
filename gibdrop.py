@@ -216,12 +216,28 @@ class Patcher:
         new_content = new_content.rstrip() + "\n"
         # Insert import and streamer loading if not present
         import_lines = [
-            "from bs4 import BeautifulSoup\n",
-            "import get_streamer\n",
-            "streamer_names = get_streamer.load_active_streamers()\n",
+            "import os\n",
+            "def load_active_streamers():\n",
+            "    try:\n",
+            "        with open(\"active_streamers.txt\", \"r\", encoding=\"utf-8\") as f:\n",
+            "            filename = f.read().strip()\n",
+            "        with open(filename, \"r\", encoding=\"utf-8\") as f2:\n",
+            "            streamer_names = []\n",
+            "            for line in f2:\n",
+            "                line = line.strip()\n",
+            "                if line.startswith('Streamer(\"') and line.endswith('\")'):\n",
+            "                    name = line[len('Streamer(\"'):-2]\n",
+            "                    streamer_names.append(name)\n",
+            "                elif line:\n",
+            "                    streamer_names.append(line)\n",
+            "            return streamer_names\n",
+            "    except Exception as e:\n",
+            "        print(f'Failed to load active streamers: {e}')\n",
+            "        return []\n",
+            "streamer_names = load_active_streamers()\n",
             "streamer_objects = [Streamer(name) for name in streamer_names]\n"
         ]
-        if "import get_streamer" not in new_content:
+        if "streamer_objects = [Streamer(name) for name in streamer_names]" not in new_content:
             # Insert after Streamer import
             streamer_import = "from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings"
             idx = new_content.find(streamer_import)
@@ -232,9 +248,9 @@ class Patcher:
                     "".join(import_lines) +
                     new_content[insert_idx:]
                 )
-                print("Inserted streamer import and loading lines.")
+                print("Inserted streamer loading logic for active_streamers.txt.")
             else:
-                print("Could not find Streamer import to insert get_streamer logic. Please check run.py.")
+                print("Could not find Streamer import to insert streamer loading logic. Please check run.py.")
         with open(runpy_path, "w", encoding="utf-8") as f:
             f.write(new_content)
         print("run.py patched successfully! If anything went wrong, restore from run.py.bak.")
