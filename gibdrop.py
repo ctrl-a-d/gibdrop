@@ -108,11 +108,8 @@ class StreamerManager:
 
     def save_default_streamers(self, streamer_list, filename="default_streamers.txt"):
         with open(filename, "w", encoding="utf-8") as f:
-            for i, name in enumerate(streamer_list):
-                if i < len(streamer_list) - 1:
-                    f.write(f'Streamer("{name.strip()}")' + ",\n")
-                else:
-                    f.write(f'Streamer("{name.strip()}")\n')
+            for name in streamer_list:
+                f.write(f"{name.strip()}\n")
 
     def load_default_streamers_from_file(self, filename="default_streamers.txt"):
         try:
@@ -183,58 +180,62 @@ class Patcher:
             print("Backed up run.py to run.py.bak.")
         with open(runpy_path, "r", encoding="utf-8") as f:
             content = f.read()
-        # The correct patched block
+        # Find the last occurrence of twitch_miner.mine(
+        pattern = re.compile(r"twitch_miner\.mine\s*\(", re.MULTILINE)
+        matches = list(pattern.finditer(content))
+        if not matches:
+            print("No twitch_miner.mine( call found. No changes made.")
+            return
+        last_match = matches[-1]
+        start = last_match.start()
+        paren_start = last_match.end() - 1
+        # Bracket matching to find the end
+        depth = 0
+        end = -1
+        for i in range(paren_start, len(content)):
+            if content[i] == '(': depth += 1
+            elif content[i] == ')':
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+        if end == -1:
+            print("Could not find matching closing parenthesis for twitch_miner.mine(. No changes made.")
+            return
+        # Replace the entire function call (from start to end+1)
         replacement = (
             "twitch_miner.mine(\n"
             "    streamer_objects,                   # [gibdrop] patched: dynamic streamer list\n"
             "    followers=False,                    # Automatic download the list of your followers\n"
             "    followers_order=FollowersOrder.ASC  # Sort the followers list by follow date. ASC or DESC\n"
-            ")"
+            ")\n"
         )
-        # If the file already ends with the correct block (plus optional newline), do nothing
-        if content.rstrip().endswith(replacement):
-            print("run.py already patched. No changes made.")
-            return
-        # Regex to match the entire twitch_miner.mine(...) call, including multiline, comments, and all arguments, up to the last closing parenthesis
-        mine_pattern = re.compile(
-            r"twitch_miner\.mine\s*\((?:[^()]*|\([^()]*\))*\)\s*",  # non-recursive, but works for most cases
-            re.DOTALL
-        )
-        # Replace all mine() calls
-        new_content, count = mine_pattern.subn(replacement + "\n", content)
-        if count == 0:
-            print("No hardcoded streamer list found in twitch_miner.mine(). No changes made to mine() call.")
-            return
-        # Remove any lines after the patched block (ensure the last line is the closing parenthesis)
-        new_content = new_content.rstrip()
-        # Find the last occurrence of the patched block
-        last_patch = replacement.rstrip()
-        idx = new_content.rfind(last_patch)
-        if idx != -1:
-            new_content = new_content[:idx + len(last_patch)]
-        # Optionally, add a single newline at the end for POSIX compliance
-        new_content = new_content.rstrip() + "\n"
+        new_content = content[:start] + replacement + content[end+1:]
         # Insert import and streamer loading if not present
-        import_lines = [
-            "from bs4 import BeautifulSoup\n",
-            "import get_streamer\n",
-            "streamer_names = get_streamer.load_active_streamers()\n",
-            "streamer_objects = [Streamer(name) for name in streamer_names]\n"
-        ]
-        if "import get_streamer" not in new_content:
+        import_lines = (
+            "import os\n\n"
+            "def load_active_streamers():\n"
+            "    try:\n"
+            "        with open('active_streamers.txt', 'r', encoding='utf-8') as f:\n"
+            "            filename = f.read().strip()\n"
+            "        with open(filename, 'r', encoding='utf-8') as f2:\n"
+            "            return [line.strip() for line in f2 if line.strip()]\n"
+            "    except Exception as e:\n"
+            "        print(f'Failed to load active streamers: {e}')\n"
+            "        return []\n\n"
+            "streamer_names = load_active_streamers()\n"
+            "streamer_objects = [Streamer(name) for name in streamer_names]\n\n"
+        )
+        if "streamer_objects = [Streamer(name) for name in streamer_names]" not in new_content:
             # Insert after Streamer import
             streamer_import = "from TwitchChannelPointsMiner.classes.entities.Streamer import Streamer, StreamerSettings"
             idx = new_content.find(streamer_import)
             if idx != -1:
                 insert_idx = new_content.find("\n", idx) + 1
-                new_content = (
-                    new_content[:insert_idx] +
-                    "".join(import_lines) +
-                    new_content[insert_idx:]
-                )
-                print("Inserted streamer import and loading lines.")
+                new_content = new_content[:insert_idx] + import_lines + new_content[insert_idx:]
+                print("Inserted streamer loading logic for active_streamers.txt.")
             else:
-                print("Could not find Streamer import to insert get_streamer logic. Please check run.py.")
+                print("Could not find Streamer import to insert streamer loading logic. Please check run.py.")
         with open(runpy_path, "w", encoding="utf-8") as f:
             f.write(new_content)
         print("run.py patched successfully! If anything went wrong, restore from run.py.bak.")
@@ -298,6 +299,7 @@ class GibdropMenu:
             print(f"\nThere are also {general_drops_count} general drops.")
         else:
             print("\nNo general drops found.")
+        # Save as plain usernames, one per line
         self.streamer_manager.save_default_streamers(rust_streamer_names, filename="drop_streamers.txt")
         self.press_any_key()
 
