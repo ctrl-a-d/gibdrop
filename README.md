@@ -6,7 +6,7 @@
 
 **Version: 0.0.3**
 
-> **This project is vibecoded. Which means it might work or not work.**
+> **This project is vibe coded. Which means it might work or not work.**
 
 A helper utility for automating and patching the [Twitch-Channel-Points-Miner-v2](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2) streamer list.
 
