@@ -35,7 +35,12 @@ After you have collected all the Rust drops, you can easily switch back to your 
 2. **Before using gibdrop, make sure the miner itself works!**
    - Test that you can run the miner and it starts up without errors.
    - Only proceed if the miner is working as expected.
-3. **Just run:**
+3. **Get the gibdrop files:**
+   - You can either **clone this repo** ([ctrl-a-d/gibdrop](https://github.com/ctrl-a-d/gibdrop)) or download the files directly:
+     - `gibdrop.py` (required)
+     - `gibdrop_dockermgr.py` (only needed if you plan to use Docker)
+   - Place the files in the same directory as your Twitch-Channel-Points-Miner-v2 project.
+4. **Just run:**
    ```bash
    python3 gibdrop.py
    ```
@@ -55,8 +60,11 @@ After you have collected all the Rust drops, you can easily switch back to your 
 - The script will automatically create the three .txt files it uses (`default_streamers.txt`, `drop_streamers.txt`, and `active_streamers.txt`) if they do not exist.
 - `.gibdrop_venv` is created automatically if needed and can be safely deleted if you want to reset the environment.
 - The drop streamer patcher is only for Rust Twitch drops.
+- **Important Note**: Due to how the patched script loads streamers, per-streamer settings (like in `example.py`) are not supported. All streamers will use the global settings from your `run.py` configuration.
 - For full miner functionality, see the [main project](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2).
 - The Dockerfile (`Dockerfile.patched`) is created automatically if missing, and always uses the correct base image and dependencies for patched/miner workflows.
 - All Docker build/run logic is handled by gibdrop.
 - The `gibdrop_dockermgr.py` file is only needed if you use the Docker workflow (it is called automatically by gibdrop; you never need to run it yourself).
 - **The Docker workflow only works on Linux. It will not work on Windows.**
+- **gibdrop is an add-on/patcher for the main miner project, not a replacement.**
+- **To prioritize drops over streaks:** Edit your `run.py` and comment out the `PRIORITY.STREAKS` line. This ensures the miner focuses on drop farming first.
