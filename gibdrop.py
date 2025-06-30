@@ -258,7 +258,7 @@ class GibdropMenu:
    \_/__/                                   \/_/ 
 """
         self.VERSION_STR = f"v.{__version__}"
-        self.CREDIT_STR = "vibecoded by ctrl-a-d"
+        self.CREDIT_STR = "vibe coded by ctrl-a-d"
 
     def print_ascii_art(self):
         print(self.ASCII_ART)
