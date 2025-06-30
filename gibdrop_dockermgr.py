@@ -24,6 +24,8 @@ TXT_FILES = [
     "active_streamers.txt"
 ]
 
+CONTAINER_NAME = "twitch-famer-gibdrop"
+
 def build_image():
     print(f"Building Docker image '{FULL_IMAGE}' from {DOCKERFILE}...")
     result = subprocess.run([
@@ -37,7 +39,6 @@ def build_image():
 def run_container():
     import subprocess
     import os
-    # Ensure persistent volumes for cookies, logs, analytics, and mount run.py as read-only
     def abs_path_clean(path):
         return os.path.abspath(path).strip()
     # Ensure all .txt files exist before running Docker
@@ -46,21 +47,37 @@ def run_container():
             print(f"[Docker] Creating missing file: {fname}")
             with open(fname, "w", encoding="utf-8") as f:
                 f.write("")
+    # Check if container is already running
+    check_cmd = ["docker", "ps", "-q", "-f", f"name=^{CONTAINER_NAME}$"]
+    running = subprocess.run(check_cmd, capture_output=True, text=True)
+    if running.stdout.strip():
+        print(f"A container named '{CONTAINER_NAME}' is already running.")
+        resp = input("Stop and remove it before starting a new one? (y/n): ").strip().lower()
+        if resp == "y":
+            stop_cmd = ["docker", "stop", CONTAINER_NAME]
+            rm_cmd = ["docker", "rm", CONTAINER_NAME]
+            subprocess.run(stop_cmd)
+            subprocess.run(rm_cmd)
+            print(f"Stopped and removed container '{CONTAINER_NAME}'.")
+        else:
+            print("Cancelled Docker start. Returning to menu.")
+            input("Press Enter to continue...")
+            return False
     volumes = [
         f"-v{abs_path_clean('cookies')}:/usr/src/app/cookies",
         f"-v{abs_path_clean('logs')}:/usr/src/app/logs",
         f"-v{abs_path_clean('analytics')}:/usr/src/app/analytics",
         f"-v{abs_path_clean('run.py')}:/usr/src/app/run.py:ro"
     ]
-    # Mount all .txt streamer files as well
     for fname in TXT_FILES:
         volumes.append(f"-v{abs_path_clean(fname)}:/usr/src/app/{fname}")
     ports = ["-p", "5000:5000"]
     image = FULL_IMAGE
-    cmd = ["docker", "run", "-it", "--rm"] + volumes + ports + [image]
+    cmd = ["docker", "run", "-it", "--rm", "--name", CONTAINER_NAME] + volumes + ports + [image]
     print("\n[Docker] Running container with persistent cookies/logs/analytics, run.py, and .txt streamer files mounted...")
     print("[Docker] Command:", " ".join(cmd))
     subprocess.run(cmd)
+    return True
 
 def ensure_txt_files():
     for fname in TXT_FILES:

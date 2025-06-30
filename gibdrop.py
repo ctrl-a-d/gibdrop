@@ -80,6 +80,7 @@ except ImportError:
             print("Failed to install dependencies, even in a virtual environment. Exiting.")
             sys.exit(1)
 
+# StreamerManager: Handles loading, saving, and fetching streamer lists (default, drop, active) for the Twitch miner.
 class StreamerManager:
     def get_rust_drops(self):
         url = "https://twitch.facepunch.com/#drops"
@@ -142,6 +143,7 @@ class StreamerManager:
         except FileNotFoundError:
             return []
 
+# Patcher: Ensures run.py exists and is patched for dynamic streamer loading; manages dependency installation.
 class Patcher:
     def __init__(self, required_packages):
         self.required_packages = required_packages
@@ -317,10 +319,8 @@ class GibdropMenu:
         if choice == "1":
             print("\nYou selected Docker. To support your patched run.py and dependencies, gibdrop will build a new Docker image based on the official miner image.\n")
             print("This will ensure your patched run.py and all dependencies work inside Docker.\n")
-            # Ensure Dockerfile and .txt files exist
             gibdrop_dockermgr.ensure_dockerfile()
             gibdrop_dockermgr.ensure_txt_files()
-            # Check if rebuild is needed
             if gibdrop_dockermgr.needs_rebuild():
                 print("No patched Docker image found, or you changed the Dockerfile / dependencies recently.\nNeed to rebuild image.")
                 confirm = input("Continue and rebuild image? (y/n): ").strip().lower()
@@ -329,7 +329,10 @@ class GibdropMenu:
                     self.press_any_key()
                     return
                 gibdrop_dockermgr.build_image()
-            gibdrop_dockermgr.run_container()
+            result = gibdrop_dockermgr.run_container()
+            if result is False:
+                # Docker start was cancelled, user already pressed enter in dockermgr, so just return
+                return
             self.press_any_key()
         elif choice == "2":
             if not os.path.isfile("run.py"):
