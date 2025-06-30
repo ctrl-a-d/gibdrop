@@ -31,16 +31,14 @@ After you have collected all the Rust drops, you can easily switch back to your 
 - All Docker actions are fully automated from the gibdrop menu.
 
 ## Usage
-1. **Clone the main miner project** ([Twitch-Channel-Points-Miner-v2](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2)) and place `gibdrop.py` in the same directory.
-2. **Before using gibdrop, make sure the miner itself works!**
-   - Test that you can run the miner and it starts up without errors.
+1. **Clone the main miner project** ([Twitch-Channel-Points-Miner-v2](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2)) and make sure the miner itself works!
    - Only proceed if the miner is working as expected.
-3. **Get the gibdrop files:**
+2. **Get the gibdrop files:**
    - You can either **clone this repo** ([ctrl-a-d/gibdrop](https://github.com/ctrl-a-d/gibdrop)) or download the files directly:
      - `gibdrop.py` (required)
      - `gibdrop_dockermgr.py` (only needed if you plan to use Docker)
    - Place the files in the same directory as your Twitch-Channel-Points-Miner-v2 project.
-4. **Just run:**
+3. **Just run:**
    ```bash
    python3 gibdrop.py
    ```
@@ -61,10 +59,4 @@ After you have collected all the Rust drops, you can easily switch back to your 
 - `.gibdrop_venv` is created automatically if needed and can be safely deleted if you want to reset the environment.
 - The drop streamer patcher is only for Rust Twitch drops.
 - **Important Note**: Due to how the patched script loads streamers, per-streamer settings (like in `example.py`) are not supported. All streamers will use the global settings from your `run.py` configuration.
-- For full miner functionality, see the [main project](https://github.com/rdavydov/Twitch-Channel-Points-Miner-v2).
-- The Dockerfile (`Dockerfile.patched`) is created automatically if missing, and always uses the correct base image and dependencies for patched/miner workflows.
-- All Docker build/run logic is handled by gibdrop.
-- The `gibdrop_dockermgr.py` file is only needed if you use the Docker workflow (it is called automatically by gibdrop; you never need to run it yourself).
-- **The Docker workflow only works on Linux. It will not work on Windows.**
-- **gibdrop is an add-on/patcher for the main miner project, not a replacement.**
 - **To prioritize drops over streaks:** Edit your `run.py` and comment out the `PRIORITY.STREAKS` line. This ensures the miner focuses on drop farming first.
