@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://i.imgur.com/uykQBYE.png" alt="gibdrop CLI logo" width="400"/>
+  <img src="https://i.imgur.com/bFkYrqb.png" alt="gibdrop CLI logo" width="400"/>
 </p>
 
 # gibdrop
