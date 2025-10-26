@@ -1,11 +1,12 @@
-# NOTE: This script is intended for Linux environments and will not work on Windows.
-
 import subprocess
 import os
 import sys
 
+def reset_terminal_colors():
+    """Reset terminal colors to default after Docker operations that may leave ANSI color codes active."""
+    print("\033[0m", end="")  # ANSI reset code
+
 DOCKERFILE = "Dockerfile.patched"
-# Use a single, consistent image name everywhere
 IMAGE_NAME = "gibdrop-miner-patched"
 IMAGE_TAG = "latest"
 FULL_IMAGE = f"{IMAGE_NAME}:{IMAGE_TAG}"
@@ -53,6 +54,7 @@ def check_container_status():
         print("📜 Recent logs:")
         logs_cmd = ["docker", "logs", "--tail", "10", CONTAINER_NAME]
         subprocess.run(logs_cmd)
+        reset_terminal_colors()  # Reset colors after viewing logs
     else:
         print("⏸️ Container exists but is not running")
         print("💡 Use 'Restart container' to start it with your current streamer list")
@@ -84,13 +86,15 @@ def restart_container():
         print(f"✅ Container '{CONTAINER_NAME}' restarted successfully!")
         print("📋 The miner will now use your updated streamer list.")
         
-        # Optional: Show container logs for a few seconds
+        # Show container logs for a few seconds
         print("\n📜 Container logs (press Ctrl+C to stop viewing):")
         try:
             logs_cmd = ["docker", "logs", "-f", "--tail", "20", CONTAINER_NAME]
             subprocess.run(logs_cmd, timeout=10)
         except (subprocess.TimeoutExpired, KeyboardInterrupt):
             print("\n📋 Container is running. Use 'docker logs -f twitch-famer-gibdrop' to view logs.")
+        finally:
+            reset_terminal_colors()  # Reset colors after viewing logs
         
         return True
     else:
