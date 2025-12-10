@@ -141,10 +141,15 @@ class StreamerManager:
             streamer_drops_div = soup.find('div', class_='streamer-drops')
             if not streamer_drops_div:
                 print("    ⚠️  Streamer drops section not found!")
-                return [], 0, campaign_start, campaign_end, is_active
+                return [], 0, 0, campaign_start, campaign_end, is_active
             
             streamer_names_spans = streamer_drops_div.find_all('span', class_='streamer-name')
             rust_streamer_names = [span.get_text(strip=True) for span in streamer_names_spans]
+            
+            # Count unique streamer drops using drop-box containers
+            # Each drop-box represents one unique drop item (teams count as 1 drop)
+            drop_boxes = streamer_drops_div.find_all('div', class_='drop-box')
+            streamer_drops_count = len(drop_boxes)
             
             # Get general drops count
             general_drops_count = 0
@@ -160,10 +165,11 @@ class StreamerManager:
                         except ValueError:
                             general_drops_count = 0
             
-            return rust_streamer_names, general_drops_count, campaign_start, campaign_end, is_active
+            # Return separate counts for display formatting
+            return rust_streamer_names, streamer_drops_count, general_drops_count, campaign_start, campaign_end, is_active
         else:
             print(f"    ⚠️  Campaign not active, skipping streamer fetch")
-            return [], 0, campaign_start, campaign_end, is_active
+            return [], 0, 0, campaign_start, campaign_end, is_active
 
     def get_all_drop_streamers(self):
         """
@@ -1077,13 +1083,16 @@ class GibdropMenu:
 
         # Always try to fetch Rust drops first
         print("🦀 Fetching Rust drop streamers...")
+        rust_fetch_successful = False
         try:
-            rust_streamers, drops_count, campaign_start, campaign_end, is_active = self.streamer_manager.get_rust_drops()
+            rust_streamers, streamer_drops, general_drops, campaign_start, campaign_end, is_active = self.streamer_manager.get_rust_drops()
             
             if rust_streamers and is_active:
                 # Format campaign dates for display
                 start_time = campaign_start.strftime('%Y-%m-%d %H:%M UTC') if campaign_start else ''
                 end_time = campaign_end.strftime('%Y-%m-%d %H:%M UTC') if campaign_end else ''
+                
+                total_drops = streamer_drops + general_drops
                 
                 # Create a virtual Rust campaign as the first option
                 rust_campaign = {
@@ -1100,14 +1109,21 @@ class GibdropMenu:
                     'end_time': end_time,
                     'details_url': 'https://twitch.facepunch.com/#drops',
                     'image_url': '',
-                    'drops_count': drops_count,
+                    'total_drops': total_drops,
+                    'streamer_drops': streamer_drops,
+                    'general_drops': general_drops,
                     'type': 'RUST_DROPS',
                     'is_active': is_active
                 }
                 
                 # Insert Rust campaign at the beginning
                 campaigns.insert(0, rust_campaign)
+                rust_fetch_successful = True
                 print(f"✅ Added Rust drops as campaign #1 ({len(rust_streamers)} streamers)")
+                
+                # Filter out duplicate Rust campaigns from Twitch inventory/dashboard
+                campaigns = [c for c in campaigns if c.get('game', '').lower() != 'rust' or c.get('type') == 'RUST_DROPS']
+                print(f"   🔍 Filtered out duplicate Rust campaigns from Twitch inventory")
             elif campaign_start and not is_active:
                 print("⚠️ Rust campaign found but not currently active")
             else:
@@ -1169,11 +1185,13 @@ class GibdropMenu:
                     # Show Rust-specific details
                     fetched_count = campaign.get('fetched_streamer_count', campaign.get('streamer_count', 0))
                     if fetched_count > 0:
-                        drops_count = campaign.get('drops_count', 0)
-                        if drops_count > 0:
-                            print(f"     🎮 {campaign['game']} | 👥 {fetched_count} streamers with drops | 🎁 {drops_count} general drops")
+                        total_drops = campaign.get('total_drops', 0)
+                        streamer_drops = campaign.get('streamer_drops', 0)
+                        general_drops = campaign.get('general_drops', 0)
+                        if total_drops > 0:
+                            print(f"     🎮 {campaign['game']} | 👥 {fetched_count} streamers | 🎁 {total_drops} Drops ({general_drops} general and {streamer_drops} streamer)")
                         else:
-                            print(f"     🎮 {campaign['game']} | 👥 {fetched_count} streamers with drops")
+                            print(f"     🎮 {campaign['game']} | 👥 {fetched_count} streamers")
                     else:
                         print(f"     🎮 {campaign['game']} | ❌ No eligible streamers found")
                 else:
@@ -1235,11 +1253,13 @@ class GibdropMenu:
                     count = len(streamer_list)
                     if count > 0:
                         if campaign.get('type') == 'RUST_DROPS':
-                            drops_count = campaign.get('drops_count', 0)
-                            if drops_count > 0:
-                                print(f"\n🦀 {campaign['name']} ({count} streamers with drops + {drops_count} general drops):")
+                            total_drops = campaign.get('total_drops', 0)
+                            streamer_drops = campaign.get('streamer_drops', 0)
+                            general_drops = campaign.get('general_drops', 0)
+                            if total_drops > 0:
+                                print(f"\n🦀 {campaign['name']} ({count} streamers | {total_drops} Drops - {general_drops} general and {streamer_drops} streamer):")
                             else:
-                                print(f"\n🦀 {campaign['name']} ({count} streamers with drops):")
+                                print(f"\n🦀 {campaign['name']} ({count} streamers):")
                         else:
                             print(f"\n🎮 {campaign['name']} (Top {count} by viewer count):")
                         for i, streamer in enumerate(streamer_list, 1):
